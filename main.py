@@ -69,22 +69,25 @@ def scrape_linkedin_jobs(job_title: str):
     search_term = job_title.lower()
     url = f"https://www.linkedin.com/jobs/search?keywords={search_term.replace(' ', '')}"
 
-    response = requests.get(url)
-    soup = BeautifulSoup(response.text, 'html.parser')
+    try:
+        response = requests.get(url)
+        soup = BeautifulSoup(response.text, 'html.parser')
 
-    job_listings = []
-    job_list_ul = soup.find('ul', class_='jobs-search__results-list')
-    if job_list_ul:
-        for job in job_list_ul.find_all('li'):
-            title_elem = job.find('h3', class_='base-search-card__title')
-            company_elem = job.find('h4', class_='base-search-card__subtitle')
+        job_listings = []
+        job_list_ul = soup.find('ul', class_='jobs-search__results-list')
+        if job_list_ul:
+            for job in job_list_ul.find_all('li'):
+                title_elem = job.find('h3', class_='base-search-card__title')
+                company_elem = job.find('h4', class_='base-search-card__subtitle')
 
-            if title_elem and company_elem:
-                title = title_elem.text.strip()
-                company = company_elem.text.strip()
-                job_listings.append({"title": title, "company": company})
+                if title_elem and company_elem:
+                    title = title_elem.text.strip()
+                    company = company_elem.text.strip()
+                    job_listings.append({"title": title, "company": company})
 
-    return job_listings
+        return job_listings
+    except requests.exceptions.ConnectionError:
+        return ["error"]
 
 def show_job_listings():
     """
@@ -104,7 +107,10 @@ def show_job_listings():
 
         job_listings = scrape_linkedin_jobs(job_title)
 
-        if job_listings:
+        if job_listings == ["error"]:
+            Messagebox.show_error("Unable to connect to LinkedIn. Please check your Internet Connection and Try Again", "Network Error")
+
+        elif job_listings:
             # Clear previous message
             listbox.delete(*listbox.get_children())
 
