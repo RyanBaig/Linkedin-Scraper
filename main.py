@@ -128,8 +128,8 @@ def show_job_listings():
 
 root = tk.Tk()
 root.title("LinkedIn Job Scraper")
-root.geometry("800x600")  
-root.resizable(False, False)
+root.geometry("800x700")  
+
 
 style = Style(theme="yeti")  # Choose a ttkbootstrap theme
 
