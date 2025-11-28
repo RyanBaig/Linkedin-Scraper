@@ -6,6 +6,9 @@ import requests
 from bs4 import BeautifulSoup
 import os
 from PIL import Image, ImageTk
+import csv
+from tkinter import filedialog
+
 
 # Store a global reference to the theme image
 theme_image = None
@@ -37,6 +40,35 @@ def create_font_awesome_image(icon, size=16, color="black", theme="light"):
     # Create a PhotoImage object and keep a reference to it
     theme_image = ImageTk.PhotoImage(image)
     return theme_image
+
+def export_to_csv():
+    """
+    Exports the job listings from the table to a CSV file chosen by the user.
+    """
+    if not listbox.get_children():
+        Messagebox.show_error("No data to export", "Please search for jobs first.")
+        return
+
+    # Open Save As dialog
+    file_path = filedialog.asksaveasfilename(
+        defaultextension=".csv",
+        filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
+        title="Save as"
+    )
+
+    if file_path:
+        try:
+            with open(file_path, mode="w", newline="", encoding="utf-8") as file:
+                writer = csv.writer(file)
+                # Write headers
+                writer.writerow(columns)
+                # Write data
+                for row_id in listbox.get_children():
+                    row = listbox.item(row_id)['values']
+                    writer.writerow(row)
+            Messagebox.show_info("Export Successful", f"Job listings exported to:\n{file_path}")
+        except Exception as e:
+            Messagebox.show_error(f"Failed to export CSV: {e}", "Export Error")
 
 def toggle_theme():
     """
@@ -79,11 +111,13 @@ def scrape_linkedin_jobs(job_title: str):
             for job in job_list_ul.find_all('li'):
                 title_elem = job.find('h3', class_='base-search-card__title')
                 company_elem = job.find('h4', class_='base-search-card__subtitle')
+                link_elem = job.find("a", class_="base-card__full-link")
 
-                if title_elem and company_elem:
+                if title_elem and company_elem and link_elem:
                     title = title_elem.text.strip()
                     company = company_elem.text.strip()
-                    job_listings.append({"title": title, "company": company})
+                    link = link_elem.get('href')
+                    job_listings.append({"title": title, "company": company, "link": link})
 
         return job_listings
     except requests.exceptions.ConnectionError:
@@ -116,7 +150,7 @@ def show_job_listings():
 
             # Populate the table with job listings
             for job in job_listings:
-                listbox.insert("", tk.END, values=(job['title'], job['company']))
+                listbox.insert("", tk.END, values=(job['title'], job['company'], job["link"]))
         else:
             # Notify the user that no jobs are found
             listbox.delete(*listbox.get_children())
@@ -142,15 +176,22 @@ job_title_entry = ttk.Entry(root, width=30)
 job_title_entry.grid(row=0, column=1, padx=5, pady=10)
 
 # Table to display job listings
-columns = ("Job Title", "Company Name")
+columns = ("Job Title", "Company Name", "Link")
 listbox = ttk.Treeview(root, columns=columns, show="headings", height=25)
 listbox.heading("Job Title", text="Job Title")
 listbox.heading("Company Name", text="Company Name")
-listbox.grid(row=1, column=0, columnspan=2, padx=10, pady=10)
+listbox.heading("Link", text="Link")
+listbox.grid(row=1, column=0, columnspan=2, padx=10, pady=10, sticky="nsew")
 
 # Add space b/w the columns
-listbox.column("Job Title", width=360, anchor=tk.W)
-listbox.column("Company Name", width=400, anchor=tk.W)
+listbox.column("Job Title", width=230, anchor=tk.CENTER)
+listbox.column("Company Name", width=230, anchor=tk.CENTER)
+listbox.column("Link", width=230, anchor=tk.CENTER)
+
+# Configure grid weights for centering
+root.grid_rowconfigure(1, weight=1)
+root.grid_columnconfigure(0, weight=1)
+root.grid_columnconfigure(1, weight=1)
 
 # Button to refresh job listings
 refresh_button = ttk.Button(root, text="Refresh Job Listings", command=show_job_listings)
@@ -158,6 +199,9 @@ refresh_button.grid(row=2, column=0, columnspan=2, pady=10)
 
 theme_icon_path = os.path.join("icons", "light-theme.png")
 theme_image = create_font_awesome_image(theme_icon_path, size=16, theme=style.theme_use())
+
+export_button = ttk.Button(root, text="Export to CSV", command=export_to_csv)
+export_button.grid(row=4, column=0, columnspan=2, pady=10)
 
 theme_button = ttk.Button(root, text="", command=toggle_theme, image=theme_image, compound=tk.LEFT)
 theme_button.grid(row=3, column=0, columnspan=2, pady=10)
